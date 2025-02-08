@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+<channel>
+    <title>My C Blog</title>
+    <link>https://example.com</link>
+    <description>A static blog generator written in C</description>
+    <language>en-us</language>
+    <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
+</channel>
+</rss>

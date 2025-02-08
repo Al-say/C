@@ -15,7 +15,7 @@ OBJ = $(SRC:.c=.o)
 BIN = blog-generator
 
 # Targets
-.PHONY: all clean install debug
+.PHONY: all clean install debug test help
 
 all: $(BIN)
 
@@ -30,18 +30,17 @@ $(BIN): $(OBJ)
 
 clean:
 	rm -f $(OBJ) $(BIN)
-	rm -rf _site
-
-install: $(BIN)
-	mkdir -p /usr/local/bin
-	cp $(BIN) /usr/local/bin/
+	rm -rf _site public
 
 test: $(BIN)
 	@echo "Running tests..."
 	./$(BIN) test_site
 	@echo "Testing complete"
 
-# 帮助目标
+install: $(BIN)
+	mkdir -p /usr/local/bin
+	cp $(BIN) /usr/local/bin/
+
 help:
 	@echo "可用的目标："
 	@echo "  all       - 构建项目（默认目标）"

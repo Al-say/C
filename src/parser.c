@@ -5,7 +5,7 @@
 #define MAX_LINE_LENGTH 4096
 #define MAX_HEADING_LEVEL 6
 
-// ÄÚ´æ³Øº¯ÊıÊµÏÖ
+// å†…å­˜æ± å®ç°
 MemPool* create_memory_pool(size_t initial_size) {
     MemPool* pool = (MemPool*)malloc(sizeof(MemPool));
     if (!pool) return NULL;
@@ -43,7 +43,7 @@ void destroy_memory_pool(MemPool* pool) {
     }
 }
 
-// ½âÎöÆ÷ÉÏÏÂÎÄº¯ÊıÊµÏÖ
+// è§£æå™¨ä¸Šä¸‹æ–‡å®ç°
 ParserContext* create_parser_context(const ParserConfig* config) {
     ParserContext* ctx = (ParserContext*)malloc(sizeof(ParserContext));
     if (!ctx) return NULL;
@@ -57,7 +57,7 @@ ParserContext* create_parser_context(const ParserConfig* config) {
     if (config) {
         memcpy(&ctx->config, config, sizeof(ParserConfig));
     } else {
-        // Ä¬ÈÏÅäÖÃ
+        // é»˜è®¤é…ç½®
         ctx->config.enable_toc = 1;
         ctx->config.enable_footnotes = 1;
         ctx->config.enable_syntax_highlight = 1;
@@ -76,7 +76,7 @@ void destroy_parser_context(ParserContext* ctx) {
     }
 }
 
-// ¸¨Öúº¯Êı£º´´½¨ĞÂµÄ¿é
+// åˆ›å»ºå—çš„å®ç°
 static Block* create_block(ParserContext* ctx, BlockType type) {
     Block* block = (Block*)pool_alloc(ctx->pool, sizeof(Block));
     if (!block) return NULL;
@@ -88,7 +88,7 @@ static Block* create_block(ParserContext* ctx, BlockType type) {
     return block;
 }
 
-// ¸¨Öúº¯Êı£ºÌí¼Ó¿éµ½Á´±í
+// å°†å—æ·»åŠ åˆ°è§£æå™¨ä¸Šä¸‹æ–‡ä¸­
 static void add_block(ParserContext* ctx, Block* block) {
     if (!ctx->first_block) {
         ctx->first_block = block;
@@ -98,7 +98,7 @@ static void add_block(ParserContext* ctx, Block* block) {
     ctx->current_block = block;
 }
 
-// ½âÎö±êÌâĞĞ
+// è§£ææ ‡é¢˜
 static Block* parse_heading(ParserContext* ctx, const char* line) {
     int level = 0;
     while (line[level] == '#' && level < MAX_HEADING_LEVEL) {
@@ -122,29 +122,211 @@ static Block* parse_heading(ParserContext* ctx, const char* line) {
     return block;
 }
 
-// Ö÷½âÎöº¯ÊıÊµÏÖ
-int parse_markdown_with_context(ParserContext* ctx, const char* input_path) {
-    if (!is_valid_path(input_path)) return 0;
+// è§£æåˆ—è¡¨é¡¹
+static Block* parse_list_item(ParserContext* ctx, const char* line) {
+    if (!line || !(*line == '-' || *line == '*' || isdigit(*line))) return NULL;
     
-    FILE* fp = fopen(input_path, "r");
-    if (!fp) return 0;
+    // è·³è¿‡åˆ—è¡¨æ ‡è®°å’Œç©ºæ ¼
+    const char* content = line;
+    if (*content == '-' || *content == '*') {
+        content++;
+    } else {
+        while (isdigit(*content)) content++;
+        if (*content == '.') content++;
+    }
+    while (isspace(*content)) content++;
     
-    char line[MAX_LINE_LENGTH];
-    Block* block = NULL;
+    Block* block = create_block(ctx, BLOCK_LIST);
+    if (!block) return NULL;
     
-    while (fgets(line, sizeof(line), fp)) {
-        // ÒÆ³ıĞĞÎ²µÄ»»ĞĞ·û
-        size_t len = strlen(line);
-        if (len > 0 && line[len-1] == '\n') {
-            line[len-1] = '\0';
-            len--;
+    size_t content_len = strlen(content);
+    block->content = (char*)pool_alloc(ctx->pool, content_len + 1);
+    if (!block->content) return NULL;
+    
+    strcpy(block->content, content);
+    return block;
+}
+
+// è§£æä»£ç å—
+static Block* parse_code_block(ParserContext* ctx, const char** ptr) {
+    const char* start = *ptr;
+    if (strncmp(start, "```", 3) != 0) return NULL;
+    
+    // Skip opening marker and get language identifier
+    start += 3;
+    const char* lang_start = start;
+    while (*start && *start != '\n') start++;
+    size_t lang_len = start - lang_start;
+    
+    // Skip newline after language identifier
+    if (*start == '\n') start++;
+    
+    // Find closing marker
+    const char* end = strstr(start, "\n```");
+    if (!end) return NULL;
+    
+    Block* block = create_block(ctx, BLOCK_CODE);
+    if (!block) return NULL;
+    
+    // Calculate content length and allocate memory
+    size_t code_len = end - start;
+    size_t total_len = lang_len + code_len + 2;  // +2 for null terminators
+    block->content = (char*)pool_alloc(ctx->pool, total_len);
+    if (!block->content) return NULL;
+    
+    // Store language identifier
+    if (lang_len > 0) {
+        strncpy(block->content, lang_start, lang_len);
+        block->content[lang_len] = '\0';
+        block->level = lang_len;  // Use level to store language identifier length
+    } else {
+        block->content[0] = '\0';
+        block->level = 0;
+    }
+    
+    // Store code content
+    char* code_content = block->content + lang_len + 1;
+    
+    // Process code content
+    const char* src = start;
+    char* dst = code_content;
+    int in_whitespace = 1;  // Track if we're in leading whitespace
+    int line_start = 1;     // Track if we're at the start of a line
+    
+    while (src < end) {
+        if (line_start) {
+            // Skip common indentation at the start of lines
+            while (isspace(*src) && *src != '\n') src++;
+            line_start = 0;
+            in_whitespace = 1;
         }
         
-        // Ìø¹ı¿ÕĞĞ
-        if (len == 0) continue;
+        if (*src == '\n') {
+            *dst++ = *src++;
+            line_start = 1;
+            in_whitespace = 1;
+        } else if (isspace(*src)) {
+            // Collapse multiple spaces into one, except in code
+            if (!in_whitespace) {
+                *dst++ = ' ';
+                in_whitespace = 1;
+            }
+            src++;
+        } else {
+            *dst++ = *src++;
+            in_whitespace = 0;
+        }
+    }
+    
+    // Remove trailing whitespace
+    while (dst > code_content && isspace(*(dst-1))) {
+        dst--;
+    }
+    *dst = '\0';
+    
+    // Update pointer position to after the closing marker
+    *ptr = end + 4;  // Skip "\n```"
+    if (**ptr == '\n') (*ptr)++;  // Skip additional newline if present
+    
+    return block;
+}
+
+// ä»å­—ç¬¦ä¸²è§£æMarkdown
+int parse_markdown_with_context(ParserContext* ctx, const char* content) {
+    if (!ctx || !content) return 0;
+    
+    const char* ptr = content;
+    char line[MAX_LINE_LENGTH];
+    Block* block = NULL;
+    int in_list = 0;  // Track if we're in a list
+    int list_type = 0;  // 0: no list, 'u': unordered list, 'o': ordered list
+    
+    // Skip YAML front matter
+    if (strncmp(ptr, "---\n", 4) == 0) {
+        ptr += 4;
+        while (*ptr) {
+            const char* eol = strchr(ptr, '\n');
+            if (!eol) break;
+            
+            size_t line_len = eol - ptr;
+            if (line_len >= sizeof(line)) line_len = sizeof(line) - 1;
+            
+            strncpy(line, ptr, line_len);
+            line[line_len] = '\0';
+            
+            if (strcmp(line, "---") == 0) {
+                ptr = eol + 1;
+                // Skip any additional newlines after front matter
+                while (*ptr == '\n') ptr++;
+                break;
+            }
+            
+            ptr = eol + 1;
+        }
+    }
+    
+    // Process the actual content
+    while (*ptr) {
+        // Check for code block
+        if (strncmp(ptr, "```", 3) == 0) {
+            if (in_list) {
+                // End current list
+                block = create_block(ctx, BLOCK_LIST);
+                if (!block) return 0;
+                block->content = NULL;  // Mark list end
+                add_block(ctx, block);
+                in_list = 0;
+                list_type = 0;
+            }
+            block = parse_code_block(ctx, &ptr);
+            if (block) {
+                add_block(ctx, block);
+                continue;
+            }
+        }
         
-        // ½âÎö±êÌâ
+        // Read a line
+        const char* eol = strchr(ptr, '\n');
+        size_t line_len;
+        if (eol) {
+            line_len = eol - ptr;
+            if (line_len >= sizeof(line)) line_len = sizeof(line) - 1;
+            strncpy(line, ptr, line_len);
+            line[line_len] = '\0';
+            ptr = eol + 1;
+        } else {
+            line_len = strlen(ptr);
+            if (line_len >= sizeof(line)) line_len = sizeof(line) - 1;
+            strncpy(line, ptr, line_len);
+            line[line_len] = '\0';
+            ptr += line_len;
+        }
+        
+        // Skip empty lines
+        if (line_len == 0) {
+            if (in_list) {
+                // End current list
+                block = create_block(ctx, BLOCK_LIST);
+                if (!block) return 0;
+                block->content = NULL;  // Mark list end
+                add_block(ctx, block);
+                in_list = 0;
+                list_type = 0;
+            }
+            continue;
+        }
+        
+        // Parse heading
         if (line[0] == '#') {
+            if (in_list) {
+                // End current list
+                block = create_block(ctx, BLOCK_LIST);
+                if (!block) return 0;
+                block->content = NULL;  // Mark list end
+                add_block(ctx, block);
+                in_list = 0;
+                list_type = 0;
+            }
             block = parse_heading(ctx, line);
             if (block) {
                 add_block(ctx, block);
@@ -152,38 +334,77 @@ int parse_markdown_with_context(ParserContext* ctx, const char* input_path) {
             }
         }
         
-        // Èç¹ûÃ»ÓĞÊ¶±ğÎªÌØÊâ¿é£¬Ôò×÷Îª¶ÎÂä´¦Àí
-        block = create_block(ctx, BLOCK_PARAGRAPH);
-        if (!block) {
-            fclose(fp);
-            return 0;
+        // Parse list item
+        if (line[0] == '-' || line[0] == '*' || isdigit(line[0])) {
+            int new_list_type = isdigit(line[0]) ? 'o' : 'u';
+            if (!in_list || list_type != new_list_type) {
+                if (in_list) {
+                    // End current list
+                    block = create_block(ctx, BLOCK_LIST);
+                    if (!block) return 0;
+                    block->content = NULL;  // Mark list end
+                    add_block(ctx, block);
+                }
+                // Start new list
+                block = create_block(ctx, BLOCK_LIST);
+                if (!block) return 0;
+                block->content = (char*)pool_alloc(ctx->pool, 2);
+                if (!block->content) return 0;
+                block->content[0] = new_list_type;  // Mark list type
+                block->content[1] = '\0';
+                add_block(ctx, block);
+                in_list = 1;
+                list_type = new_list_type;
+            }
+            block = parse_list_item(ctx, line);
+            if (block) {
+                add_block(ctx, block);
+                continue;
+            }
+        } else if (in_list) {
+            // End current list
+            block = create_block(ctx, BLOCK_LIST);
+            if (!block) return 0;
+            block->content = NULL;  // Mark list end
+            add_block(ctx, block);
+            in_list = 0;
+            list_type = 0;
         }
         
-        block->content = (char*)pool_alloc(ctx->pool, len + 1);
-        if (!block->content) {
-            fclose(fp);
-            return 0;
-        }
+        // If not recognized as other block, treat as paragraph
+        block = create_block(ctx, BLOCK_PARAGRAPH);
+        if (!block) return 0;
+        
+        block->content = (char*)pool_alloc(ctx->pool, line_len + 1);
+        if (!block->content) return 0;
         
         strcpy(block->content, line);
         add_block(ctx, block);
     }
     
-    fclose(fp);
+    // If still in a list, end it
+    if (in_list) {
+        block = create_block(ctx, BLOCK_LIST);
+        if (!block) return 0;
+        block->content = NULL;  // Mark list end
+        add_block(ctx, block);
+    }
+    
     return 1;
 }
 
-// Éú³ÉHTMLÊä³ö
+// ç”ŸæˆHTMLè¾“å‡º
 char* get_html_output(ParserContext* ctx) {
     if (!ctx || !ctx->first_block) return NULL;
     
-    // Ô¤¹ÀĞèÒªµÄ»º³åÇø´óĞ¡
+    // é¢„ä¼°éœ€è¦çš„ç¼“å†²åŒºå¤§å°
     size_t buffer_size = 4096;
     char* output = (char*)malloc(buffer_size);
     if (!output) return NULL;
     
     size_t used = 0;
     Block* block = ctx->first_block;
+    int in_list = 0;  // è·Ÿè¸ªæ˜¯å¦åœ¨åˆ—è¡¨ä¸­
     
     while (block) {
         char* block_html = NULL;
@@ -200,11 +421,69 @@ char* get_html_output(ParserContext* ctx) {
                 break;
                 
             case BLOCK_PARAGRAPH:
-                block_size = strlen(block->content) + 50;
-                block_html = (char*)malloc(block_size);
-                if (block_html) {
-                    snprintf(block_html, block_size, "<p>%s</p>\n", 
-                            block->content);
+                if (strlen(block->content) > 0) {  // åªè¾“å‡ºéç©ºæ®µè½
+                    block_size = strlen(block->content) + 50;
+                    block_html = (char*)malloc(block_size);
+                    if (block_html) {
+                        snprintf(block_html, block_size, "<p>%s</p>\n", 
+                                block->content);
+                    }
+                }
+                break;
+                
+            case BLOCK_LIST:
+                if (!block->content) {
+                    // åˆ—è¡¨ç»“æŸ
+                    block_html = (char*)malloc(10);
+                    if (block_html) {
+                        snprintf(block_html, 10, "</%cl>\n", in_list);
+                        in_list = 0;
+                    }
+                } else if (block->content[0] == 'u' || block->content[0] == 'o') {
+                    // åˆ—è¡¨å¼€å§‹
+                    in_list = block->content[0];
+                    block_html = (char*)malloc(10);
+                    if (block_html) {
+                        snprintf(block_html, 10, "<%cl>\n", 
+                                block->content[0] == 'u' ? 'u' : 'o');
+                    }
+                } else {
+                    // åˆ—è¡¨é¡¹
+                    block_size = strlen(block->content) + 50;
+                    block_html = (char*)malloc(block_size);
+                    if (block_html) {
+                        snprintf(block_html, block_size, "<li>%s</li>\n",
+                                block->content);
+                    }
+                }
+                break;
+                
+            case BLOCK_CODE:
+                {
+                    const char* lang = block->content;
+                    const char* code = block->content + block->level + 1;
+                    block_size = strlen(code) + block->level + 100;
+                    block_html = (char*)malloc(block_size);
+                    if (block_html) {
+                        if (block->level > 0) {
+                            // Trim any whitespace from language identifier
+                            char lang_buf[32];
+                            size_t i = 0;
+                            while (i < block->level && i < sizeof(lang_buf)-1 && !isspace(lang[i])) {
+                                lang_buf[i] = lang[i];
+                                i++;
+                            }
+                            lang_buf[i] = '\0';
+                            
+                            snprintf(block_html, block_size, 
+                                    "<pre><code class=\"language-%s\">%s</code></pre>\n",
+                                    lang_buf, code);
+                        } else {
+                            snprintf(block_html, block_size, 
+                                    "<pre><code>%s</code></pre>\n",
+                                    code);
+                        }
+                    }
                 }
                 break;
                 
@@ -233,15 +512,33 @@ char* get_html_output(ParserContext* ctx) {
         block = block->next;
     }
     
+    // ç¡®ä¿æ‰€æœ‰åˆ—è¡¨éƒ½è¢«å…³é—­
+    if (in_list) {
+        char list_end[10];
+        snprintf(list_end, sizeof(list_end), "</%cl>\n", in_list);
+        size_t len = strlen(list_end);
+        if (used + len >= buffer_size) {
+            buffer_size *= 2;
+            char* new_output = (char*)realloc(output, buffer_size);
+            if (!new_output) {
+                free(output);
+                return NULL;
+            }
+            output = new_output;
+        }
+        strcpy(output + used, list_end);
+        used += len;
+    }
+    
     return output;
 }
 
-// ¹¤¾ßº¯ÊıÊµÏÖ
+// è½¬ä¹‰HTML
 char* escape_html(const char* str) {
     if (!str) return NULL;
     
     size_t len = strlen(str);
-    size_t escaped_len = len * 6 + 1;  // ×î»µÇé¿ö£ºËùÓĞ×Ö·û¶¼ĞèÒª×ªÒå
+    size_t escaped_len = len * 6 + 1;  // æœ€åæƒ…å†µä¸‹ï¼Œæ¯ä¸ªå­—ç¬¦éƒ½éœ€è¦è½¬ä¹‰
     char* escaped = (char*)malloc(escaped_len);
     if (!escaped) return NULL;
     
@@ -276,7 +573,7 @@ char* escape_html(const char* str) {
 int is_valid_path(const char* path) {
     if (!path) return 0;
     
-    // ¼ì²éÂ·¾¶ÖĞÊÇ·ñ°üº¬Î£ÏÕµÄÄ£Ê½
+    // æ£€æŸ¥è·¯å¾„æ˜¯å¦åŒ…å«å±é™©å­—ç¬¦ä¸²ï¼Œå¦‚"..", "//", "~"
     const char* dangerous[] = {"..", "//", "~"};
     for (size_t i = 0; i < sizeof(dangerous)/sizeof(dangerous[0]); i++) {
         if (strstr(path, dangerous[i])) return 0;

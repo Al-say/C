@@ -54,7 +54,7 @@ void destroy_memory_pool(MemPool* pool);
 // 高级解析函数
 ParserContext* create_parser_context(const ParserConfig* config);
 void destroy_parser_context(ParserContext* ctx);
-int parse_markdown_with_context(ParserContext* ctx, const char* input_path);
+int parse_markdown_with_context(ParserContext* ctx, const char* content);
 char* get_html_output(ParserContext* ctx);
 
 // 工具函数
