@@ -4,8 +4,7 @@
 #include <ctype.h>
 
 #ifdef _WIN32
-#include <io.h>
-#include <windows.h>
+#include <direct.h>
 #define PATH_SEPARATOR '\\'
 #define MKDIR(path) _mkdir(path)
 #define F_OK 0
@@ -18,18 +17,18 @@
 #define MKDIR(path) mkdir(path, 0755)
 #endif
 
-// ¸¨Öúº¯Êý£º¼ì²éÎÄ¼þÊÇ·ñ´æÔÚ
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½
 static int file_exists(const char* path) {
     return access(path, F_OK) == 0;
 }
 
-// ¸¨Öúº¯Êý£º¼ì²éÊÇ·ñÊÇMarkdownÎÄ¼þ
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Markdownï¿½Ä¼ï¿½
 static int is_markdown_file(const char* filename) {
     const char* ext = strrchr(filename, '.');
     return ext && strcmp(ext, ".md") == 0;
 }
 
-// ¸¨Öúº¯Êý£ºÁ¬½ÓÂ·¾¶
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½
 static char* join_path(const char* dir, const char* file) {
     size_t dir_len = strlen(dir);
     size_t file_len = strlen(file);
@@ -47,7 +46,7 @@ static char* join_path(const char* dir, const char* file) {
     return path;
 }
 
-// Éú³ÉÆ÷ÉÏÏÂÎÄ²Ù×÷
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä²ï¿½ï¿½ï¿½
 GeneratorContext* create_generator_context(const BlogConfig* config, const char* output_dir) {
     GeneratorContext* ctx = (GeneratorContext*)malloc(sizeof(GeneratorContext));
     if (!ctx) return NULL;
@@ -76,7 +75,7 @@ GeneratorContext* create_generator_context(const BlogConfig* config, const char*
     }
     strcpy(ctx->output_dir, output_dir);
     
-    ctx->template_dir = NULL;  // ½«ÔÚºóÐøÉèÖÃ
+    ctx->template_dir = NULL;  // ï¿½ï¿½ï¿½Úºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     
     return ctx;
 }
@@ -88,7 +87,7 @@ void destroy_generator_context(GeneratorContext* ctx) {
     }
 }
 
-// ´´½¨Ä¿Â¼½á¹¹
+// ï¿½ï¿½ï¿½ï¿½Ä¿Â¼ï¿½á¹¹
 void create_directory_structure(const char* base_dir) {
     char* dirs[] = {
         "posts",
@@ -108,14 +107,14 @@ void create_directory_structure(const char* base_dir) {
     }
 }
 
-// ÌáÈ¡ÎÄÕÂÔªÊý¾Ý
+// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½Ôªï¿½ï¿½ï¿½ï¿½
 PostMetadata* extract_post_metadata(const char* markdown_content) {
     if (!markdown_content) return NULL;
     
     PostMetadata* metadata = malloc(sizeof(PostMetadata));
     if (!metadata) return NULL;
     
-    // ³õÊ¼»¯Ä¬ÈÏÖµ
+    // ï¿½ï¿½Ê¼ï¿½ï¿½Ä¬ï¿½ï¿½Öµ
     metadata->title = NULL;
     metadata->date = NULL;
     metadata->author = NULL;
@@ -128,7 +127,7 @@ PostMetadata* extract_post_metadata(const char* markdown_content) {
     const char* ptr = markdown_content;
     int in_metadata = 0;
     
-    // ²éÕÒÔªÊý¾Ý¿é (YAML front matter)
+    // ï¿½ï¿½ï¿½ï¿½Ôªï¿½ï¿½ï¿½Ý¿ï¿½ (YAML front matter)
     if (strncmp(ptr, "---\n", 4) == 0) {
         in_metadata = 1;
         ptr += 4;
@@ -169,17 +168,17 @@ PostMetadata* extract_post_metadata(const char* markdown_content) {
     return metadata;
 }
 
-// Éú³ÉÓÀ¾ÃÁ´½Ó
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 char* generate_permalink(const char* title, const char* date) {
     if (!title || !date) return NULL;
     
     char* permalink = malloc(strlen(title) + strlen(date) + 2);
     if (!permalink) return NULL;
     
-    // ¼ò»¯µÄÓÀ¾ÃÁ´½ÓÉú³É
+    // ï¿½ò»¯µï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     sprintf(permalink, "%s-%s", date, title);
     
-    // ½«¿Õ¸ñ×ª»»ÎªÁ¬×Ö·û
+    // ï¿½ï¿½ï¿½Õ¸ï¿½×ªï¿½ï¿½Îªï¿½ï¿½ï¿½Ö·ï¿½
     for (char* p = permalink; *p; p++) {
         if (isspace(*p)) *p = '-';
     }
@@ -187,7 +186,7 @@ char* generate_permalink(const char* title, const char* date) {
     return permalink;
 }
 
-// ´¦ÀíÎÄÕÂ
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 void process_posts(GeneratorContext* ctx, const char* posts_dir) {
 #ifdef _WIN32
     WIN32_FIND_DATA find_data;
@@ -262,7 +261,7 @@ void process_posts(GeneratorContext* ctx, const char* posts_dir) {
 #endif
 }
 
-// Éú³ÉÎÄÕÂÒ³Ãæ
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò³ï¿½ï¿½
 void generate_post_page(GeneratorContext* ctx, const char* markdown_content, PostMetadata* metadata) {
     ParserContext* parser_ctx = create_parser_context(NULL);
     if (!parser_ctx) return;
@@ -293,7 +292,7 @@ void generate_post_page(GeneratorContext* ctx, const char* markdown_content, Pos
     destroy_parser_context(parser_ctx);
 }
 
-// Éú³ÉÍøÕ¾
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ¾
 void generate_blog(const char* output_dir) {
     BlogConfig config = {
         .site_title = "My C Blog",
@@ -317,20 +316,24 @@ void generate_blog(const char* output_dir) {
     destroy_generator_context(ctx);
 }
 
-// RSSºÍÕ¾µãµØÍ¼Éú³É
+// RSSï¿½ï¿½Õ¾ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½
 void generate_rss_feed(GeneratorContext* ctx) {
-    char* rss_path = join_path(ctx->output_dir, "rss.xml");
+    if (!ctx || !ctx->config) return;
+    
+    char* rss_path = join_path(ctx->output_dir, "feed.xml");
     if (!rss_path) return;
     
     FILE* fp = fopen(rss_path, "w");
     if (fp) {
-        fprintf(fp, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        fprintf(fp, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
         fprintf(fp, "<rss version=\"2.0\">\n");
-        fprintf(fp, "  <channel>\n");
-        fprintf(fp, "    <title>%s</title>\n", ctx->config->site_title);
-        fprintf(fp, "    <description>%s</description>\n", ctx->config->site_description);
+        fprintf(fp, "<channel>\n");
+        fprintf(fp, "    <title>%s</title>\n", ctx->config->blog_title);
         fprintf(fp, "    <link>%s</link>\n", ctx->config->base_url);
-        fprintf(fp, "  </channel>\n");
+        fprintf(fp, "    <description>%s</description>\n", ctx->config->blog_description);
+        fprintf(fp, "    <language>en-us</language>\n");
+        fprintf(fp, "    <pubDate>%s</pubDate>\n", "Mon, 01 Jan 2024 00:00:00 GMT");
+        fprintf(fp, "</channel>\n");
         fprintf(fp, "</rss>\n");
         fclose(fp);
     }
@@ -353,15 +356,21 @@ void generate_sitemap(GeneratorContext* ctx) {
     free(sitemap_path);
 }
 
-// Ë÷ÒýÒ³ºÍ¹éµµÒ³Éú³É
+// ï¿½ï¿½ï¿½ï¿½Ò³ï¿½Í¹éµµÒ³ï¿½ï¿½ï¿½ï¿½
 void generate_index_page(GeneratorContext* ctx) {
+    if (!ctx || !ctx->config) return;
+    
     char* index_path = join_path(ctx->output_dir, "index.html");
     if (!index_path) return;
     
     FILE* fp = fopen(index_path, "w");
     if (fp) {
-        fprintf(fp, "<html><body><h1>Welcome to %s</h1></body></html>\n",
-                ctx->config->site_title);
+        fprintf(fp, "<!DOCTYPE html>\n");
+        fprintf(fp, "<html>\n<head>\n");
+        fprintf(fp, "<title>%s</title>\n", ctx->config->blog_title);
+        fprintf(fp, "</head>\n<body>\n");
+        fprintf(fp, "<h1>%s</h1>\n", ctx->config->blog_title);
+        fprintf(fp, "</body>\n</html>\n");
         fclose(fp);
     }
     
@@ -387,4 +396,52 @@ void generate_archive_page(GeneratorContext* ctx) {
     }
     
     free(archive_path);
+}
+
+// æ¨¡æ¿å¤„ç†å‡½æ•°
+char* apply_template(const char* template_content, const char* content, const PostMetadata* metadata) {
+    if (!template_content || !content || !metadata) return NULL;
+    
+    // é¢„ä¼°éœ€è¦çš„ç¼“å†²åŒºå¤§å°
+    size_t buffer_size = strlen(template_content) + strlen(content) * 2;
+    if (metadata->title) buffer_size += strlen(metadata->title);
+    if (metadata->date) buffer_size += strlen(metadata->date);
+    if (metadata->author) buffer_size += strlen(metadata->author);
+    if (metadata->description) buffer_size += strlen(metadata->description);
+    
+    char* result = malloc(buffer_size);
+    if (!result) return NULL;
+    
+    // ç®€å•çš„æ¨¡æ¿æ›¿æ¢
+    char* current = result;
+    const char* template_ptr = template_content;
+    
+    while (*template_ptr) {
+        if (strncmp(template_ptr, "{{content}}", 10) == 0) {
+            strcpy(current, content);
+            current += strlen(content);
+            template_ptr += 10;
+        } else if (strncmp(template_ptr, "{{title}}", 8) == 0 && metadata->title) {
+            strcpy(current, metadata->title);
+            current += strlen(metadata->title);
+            template_ptr += 8;
+        } else if (strncmp(template_ptr, "{{date}}", 8) == 0 && metadata->date) {
+            strcpy(current, metadata->date);
+            current += strlen(metadata->date);
+            template_ptr += 8;
+        } else if (strncmp(template_ptr, "{{author}}", 10) == 0 && metadata->author) {
+            strcpy(current, metadata->author);
+            current += strlen(metadata->author);
+            template_ptr += 10;
+        } else if (strncmp(template_ptr, "{{description}}", 14) == 0 && metadata->description) {
+            strcpy(current, metadata->description);
+            current += strlen(metadata->description);
+            template_ptr += 14;
+        } else {
+            *current++ = *template_ptr++;
+        }
+    }
+    *current = '\0';
+    
+    return result;
 }

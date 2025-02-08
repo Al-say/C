@@ -6,60 +6,55 @@
 #include <string.h>
 #include "parser.h"
 
-// ²©¿ÍÅäÖÃ½á¹¹Ìå
+// åšå®¢é…ç½®ç»“æ„ä½“
 typedef struct {
-    char* site_title;       // ÍøÕ¾±êÌâ
-    char* site_description; // ÍøÕ¾ÃèÊö
-    char* author;          // ×÷ÕßĞÅÏ¢
-    char* theme;           // Ö÷ÌâÃû³Æ
-    char* base_url;        // ÍøÕ¾»ù´¡URL
+    char* blog_title;
+    char* blog_description;
+    char* author;
+    char* base_url;
+    char* theme;
 } BlogConfig;
 
-// ÎÄÕÂÔªÊı¾İ½á¹¹Ìå
+// æ–‡ç« å…ƒæ•°æ®ç»“æ„ä½“
 typedef struct {
-    char* title;           // ÎÄÕÂ±êÌâ
-    char* date;            // ·¢²¼ÈÕÆÚ
-    char* author;          // ×÷Õß
-    char* description;     // ÎÄÕÂÃèÊö
-    char** tags;          // ±êÇ©Êı×é
-    int tag_count;        // ±êÇ©ÊıÁ¿
-    char* permalink;      // ÓÀ¾ÃÁ´½Ó
+    char* title;
+    char* date;
+    char* author;
+    char* description;
+    char* permalink;
+    char** tags;
+    int tag_count;
 } PostMetadata;
 
-// Éú³ÉÆ÷ÉÏÏÂÎÄ½á¹¹Ìå
+// ç”Ÿæˆå™¨ä¸Šä¸‹æ–‡ç»“æ„ä½“
 typedef struct {
-    BlogConfig* config;    // ²©¿ÍÅäÖÃ
-    char* output_dir;      // Êä³öÄ¿Â¼
-    char* template_dir;    // Ä£°åÄ¿Â¼
-    MemPool* pool;        // ÄÚ´æ³Ø
+    MemPool* pool;
+    BlogConfig* config;
+    char* output_dir;
+    char* template_dir;
 } GeneratorContext;
 
-// Ö÷ÒªÉú³Éº¯Êı
-void generate_blog(const char* output_dir);
-
-// Éú³ÉÆ÷ÉÏÏÂÎÄ²Ù×÷
+// ç”Ÿæˆå™¨ä¸Šä¸‹æ–‡æ“ä½œ
 GeneratorContext* create_generator_context(const BlogConfig* config, const char* output_dir);
 void destroy_generator_context(GeneratorContext* ctx);
 
-// ÎÄÕÂ´¦Àíº¯Êı
+// ç›®å½•ç»“æ„æ“ä½œ
+void create_directory_structure(const char* base_dir);
+
+// æ–‡ç« å¤„ç†å‡½æ•°
+PostMetadata* extract_post_metadata(const char* markdown_content);
+char* generate_permalink(const char* title, const char* date);
 void process_posts(GeneratorContext* ctx, const char* posts_dir);
+
+// é¡µé¢ç”Ÿæˆå‡½æ•°
 void generate_post_page(GeneratorContext* ctx, const char* markdown_content, PostMetadata* metadata);
 void generate_index_page(GeneratorContext* ctx);
 void generate_tag_pages(GeneratorContext* ctx);
 void generate_archive_page(GeneratorContext* ctx);
-
-// Ä£°å´¦Àíº¯Êı
-char* apply_template(const char* template_path, const char* content, const PostMetadata* metadata);
-char* load_template(const char* template_path);
-
-// ¹¤¾ßº¯Êı
-void copy_static_assets(const char* src_dir, const char* dest_dir);
-PostMetadata* extract_post_metadata(const char* markdown_content);
-void create_directory_structure(const char* base_dir);
-char* generate_permalink(const char* title, const char* date);
-
-// RSSºÍÕ¾µãµØÍ¼Éú³É
 void generate_rss_feed(GeneratorContext* ctx);
 void generate_sitemap(GeneratorContext* ctx);
+
+// æ¨¡æ¿å¤„ç†å‡½æ•°
+char* apply_template(const char* template_content, const char* content, const PostMetadata* metadata);
 
 #endif /* GENERATOR_H */

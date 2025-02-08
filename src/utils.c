@@ -3,6 +3,9 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <dirent.h>
+#include <ctype.h>
+#include <stdarg.h>
 
 #ifdef _WIN32
 #include <direct.h>
@@ -11,12 +14,11 @@
 #define MKDIR_CMD "mkdir "
 #else
 #include <unistd.h>
-#include <dirent.h>
 #define PATH_SEPARATOR '/'
 #define MKDIR_CMD "mkdir -p "
 #endif
 
-// ÄÚ´æ×·×Ùº¯Êı
+// ï¿½Ú´ï¿½×·ï¿½Ùºï¿½ï¿½ï¿½
 static size_t total_allocated = 0;
 static size_t allocation_count = 0;
 
@@ -43,7 +45,7 @@ void tracked_free(void* ptr, const char* file, int line) {
     }
 }
 
-// Ä¿Â¼²Ù×÷º¯Êı
+// Ä¿Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 void mkdir_p(const char* path) {
     char tmp[1024];
     char* p = NULL;
@@ -85,15 +87,15 @@ void copy_directory(const char* src, const char* dest) {
     }
 }
 
-// ¸ñÊ½»¯ÈÕÆÚº¯Êı
+// ï¿½ï¿½Ê½ï¿½ï¿½ï¿½ï¿½ï¿½Úºï¿½ï¿½ï¿½
 char* format_rss_date(const char* date) {
-    // ¼ÙÉèÊäÈë¸ñÊ½Îª YYYY-MM-DD
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½Îª YYYY-MM-DD
     struct tm tm = {0};
     static char formatted[50];
     
     if (sscanf(date, "%d-%d-%d", &tm.tm_year, &tm.tm_mon, &tm.tm_mday) == 3) {
-        tm.tm_year -= 1900;  // Äê·İ´Ó1900¿ªÊ¼
-        tm.tm_mon -= 1;      // ÔÂ·İ´Ó0¿ªÊ¼
+        tm.tm_year -= 1900;  // ï¿½ï¿½İ´ï¿½1900ï¿½ï¿½Ê¼
+        tm.tm_mon -= 1;      // ï¿½Â·İ´ï¿½0ï¿½ï¿½Ê¼
         
         strftime(formatted, sizeof(formatted),
                 "%a, %d %b %Y %H:%M:%S +0000",
@@ -103,22 +105,22 @@ char* format_rss_date(const char* date) {
     return NULL;
 }
 
-// ×Ö·û´®´¦Àíº¯Êı
+// ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 void trim_whitespace(char* str) {
     char* end;
 
-    // Ìø¹ı¿ªÍ·¿Õ°×
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í·ï¿½Õ°ï¿½
     while (isspace((unsigned char)*str)) str++;
 
     if (*str == 0) return;
 
-    // ´ÓºóÍùÇ°ÒÆ³ı¿Õ°×
+    // ï¿½Óºï¿½ï¿½ï¿½Ç°ï¿½Æ³ï¿½ï¿½Õ°ï¿½
     end = str + strlen(str) - 1;
     while (end > str && isspace((unsigned char)*end)) end--;
     end[1] = '\0';
 }
 
-// Â·¾¶´¦Àíº¯Êı
+// Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 char* get_file_ext(const char* filename) {
     char* dot = strrchr(filename, '.');
     if (!dot || dot == filename) return "";
@@ -130,7 +132,7 @@ int is_markdown_file(const char* filename) {
     return strcmp(ext, "md") == 0 || strcmp(ext, "markdown") == 0;
 }
 
-// ÎÄ¼şÏµÍ³¸¨Öúº¯Êı
+// ï¿½Ä¼ï¿½ÏµÍ³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 int file_exists(const char* path) {
 #ifdef _WIN32
     return _access(path, 0) == 0;
@@ -147,17 +149,21 @@ long get_file_size(const char* path) {
     return -1;
 }
 
-// µ÷ÊÔºÍÈÕÖ¾º¯Êı
-void log_debug(const char* fmt, ...) {
+// ï¿½ï¿½ï¿½Ôºï¿½ï¿½ï¿½Ö¾ï¿½ï¿½ï¿½ï¿½
 #ifdef DEBUG
+void log_debug(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
     fprintf(stderr, "[DEBUG] ");
     vfprintf(stderr, fmt, args);
     fprintf(stderr, "\n");
     va_end(args);
-#endif
 }
+#else
+void log_debug(const char* fmt, ...) {
+    (void)fmt; // é¿å…æœªä½¿ç”¨å‚æ•°çš„è­¦å‘Š
+}
+#endif
 
 void log_error(const char* fmt, ...) {
     va_list args;
@@ -168,7 +174,7 @@ void log_error(const char* fmt, ...) {
     va_end(args);
 }
 
-// °²È«×Ö·û´®º¯Êı
+// ï¿½ï¿½È«ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 size_t safe_strncpy(char* dest, const char* src, size_t n) {
     if (!dest || !src || n == 0) return 0;
     
@@ -180,7 +186,7 @@ size_t safe_strncpy(char* dest, const char* src, size_t n) {
     return i;
 }
 
-// HTML°²È«±àÂë
+// HTMLï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½
 void html_encode(const char* src, char* dest, size_t dest_size) {
     size_t i = 0, j = 0;
     
@@ -215,7 +221,7 @@ void html_encode(const char* src, char* dest, size_t dest_size) {
     dest[j] = '\0';
 }
 
-// URL°²È«±àÂë
+// URLï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½
 void url_encode(const char* src, char* dest, size_t dest_size) {
     static const char hex[] = "0123456789ABCDEF";
     size_t i = 0, j = 0;

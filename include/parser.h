@@ -5,22 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Markdown ÎÄ¼ş½âÎöº¯Êı
-void parse_markdown(const char* input_path, char** html_output);
-
-// ÄÚ´æ³Ø½á¹¹Ìå¶¨Òå
-typedef struct {
-    char* pool;
-    size_t used;
-    size_t capacity;
-} MemPool;
-
-// ÄÚ´æ³Ø²Ù×÷º¯Êı
-MemPool* create_memory_pool(size_t initial_size);
-void* pool_alloc(MemPool* pool, size_t size);
-void destroy_memory_pool(MemPool* pool);
-
-// Markdown ½âÎöÖ§³ÖµÄ¿éÀàĞÍ
+// Markdown å—ç±»å‹å®šä¹‰
 typedef enum {
     BLOCK_PARAGRAPH,
     BLOCK_HEADING,
@@ -30,37 +15,49 @@ typedef enum {
     BLOCK_HR
 } BlockType;
 
-// Markdown ¿é½á¹¹Ìå
-typedef struct {
+// Markdown å—ç»“æ„ä½“
+typedef struct Block {
     BlockType type;
     char* content;
-    int level;  // ÓÃÓÚ±êÌâ¼¶±ğ»òÁĞ±íÇ¶Ì×¼¶±ğ
+    int level;  // ç”¨äºæ ‡é¢˜çº§åˆ«å’Œåˆ—è¡¨åµŒå¥—å±‚çº§
     struct Block* next;
 } Block;
 
-// ½âÎöÆ÷ÅäÖÃ½á¹¹Ìå
+// å†…å­˜æ± ç»“æ„ä½“å®šä¹‰
 typedef struct {
-    int enable_toc;           // ÊÇ·ñÉú³ÉÄ¿Â¼
-    int enable_footnotes;     // ÊÇ·ñÖ§³Ö½Å×¢
-    int enable_syntax_highlight;  // ÊÇ·ñÆôÓÃ´úÂë¸ßÁÁ
-    char* syntax_theme;       // ´úÂë¸ßÁÁÖ÷Ìâ
+    char* pool;
+    size_t used;
+    size_t capacity;
+} MemPool;
+
+// è§£æå™¨é…ç½®ç»“æ„ä½“
+typedef struct {
+    int enable_toc;           // æ˜¯å¦ç”Ÿæˆç›®å½•
+    int enable_footnotes;     // æ˜¯å¦æ”¯æŒè„šæ³¨
+    int enable_syntax_highlight;  // æ˜¯å¦å¯ç”¨ä»£ç é«˜äº®
+    char* syntax_theme;       // ä»£ç é«˜äº®ä¸»é¢˜
 } ParserConfig;
 
-// ½âÎöÆ÷ÉÏÏÂÎÄ½á¹¹Ìå
+// è§£æå™¨ä¸Šä¸‹æ–‡ç»“æ„ä½“
 typedef struct {
-    MemPool* pool;           // ÄÚ´æ³Ø
-    ParserConfig config;     // ½âÎöÆ÷ÅäÖÃ
-    Block* first_block;      // µÚÒ»¸ö¿é
-    Block* current_block;    // µ±Ç°´¦ÀíµÄ¿é
+    MemPool* pool;           // å†…å­˜æ± 
+    ParserConfig config;     // è§£æå™¨é…ç½®
+    Block* first_block;      // ç¬¬ä¸€ä¸ªå—
+    Block* current_block;    // å½“å‰å¤„ç†çš„å—
 } ParserContext;
 
-// ¸ß¼¶½âÎöº¯Êı
+// å†…å­˜æ± æ“ä½œå‡½æ•°
+MemPool* create_memory_pool(size_t initial_size);
+void* pool_alloc(MemPool* pool, size_t size);
+void destroy_memory_pool(MemPool* pool);
+
+// é«˜çº§è§£æå‡½æ•°
 ParserContext* create_parser_context(const ParserConfig* config);
 void destroy_parser_context(ParserContext* ctx);
 int parse_markdown_with_context(ParserContext* ctx, const char* input_path);
 char* get_html_output(ParserContext* ctx);
 
-// ¹¤¾ßº¯Êı
+// å·¥å…·å‡½æ•°
 char* escape_html(const char* str);
 int is_valid_path(const char* path);
 void sanitize_html(char* html);
