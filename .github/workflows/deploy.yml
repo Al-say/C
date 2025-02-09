@@ -6,12 +6,27 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Set up Build Cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/gcc
+          ~/.cache/make
+        key: ${{ runner.os }}-build-${{ hashFiles('**/*.c', '**/*.h', 'Makefile') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
 
     - name: Install Dependencies
       run: |
@@ -20,21 +35,25 @@ jobs:
 
     - name: Build Project
       run: |
+        make clean
         make
 
     - name: Generate Site
       run: |
         mkdir -p _site
         ./blog-generator _site
+        cp -r templates _site/
+        cp -r assets/* _site/ || true
+        touch _site/.nojekyll
 
     - name: Deploy to GitHub Pages
       if: github.ref == 'refs/heads/main'
       uses: peaceiris/actions-gh-pages@v3
-      env:
-        ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./_site
         full_commit_message: ${{ github.event.head_commit.message }}
-        user_name: 'gh-pages'
+        user_name: 'github-actions[bot]'
         user_email: 'github-actions[bot]@users.noreply.github.com'
+        force_orphan: true
+        enable_jekyll: false
