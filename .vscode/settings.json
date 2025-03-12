@@ -1,0 +1,10 @@
+{
+    "files.encoding": "utf8",
+    "files.autoGuessEncoding": false,
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.default.cStandard": "c17",
+    "editor.formatOnSave": true,
+    "editor.renderControlCharacters": true,
+    "editor.renderWhitespace": "all",
+    "files.trimTrailingWhitespace": true
+}

@@ -1,38 +1,17 @@
-# 构建产物
-*.o
+# Compiled files
+*.exe
 *.out
-blog-generator
-_site/
+*.o
+*.obj
 
-# IDE和编辑器文件
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# 调试文件
+# Debug files
 *.dSYM/
-*.su
-*.idb
-*.pdb
 
-# 系统文件
+# IDE specific files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# macOS specific files
 .DS_Store
-Thumbs.db
-
-# 临时文件
-*.log
-*.tmp
-temp/
-
-# 依赖目录
-/vendor/
-/node_modules/
-
-# 编译缓存
-.cache/
-build/
-
-# 测试覆盖率报告
-coverage/
